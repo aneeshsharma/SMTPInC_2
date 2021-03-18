@@ -48,10 +48,24 @@ int main()
     scanf("%s%*c", password);
 
     int length;
-    char *data;
-    length = recv_packet(sock_fd, &data);
+    char *response;
 
-    printf("Received data - %s\n", data);
+    send_packet(sock_fd, username, strlen(username));
+    send_packet(sock_fd, password, strlen(password));
+
+    length = recv_packet(sock_fd, &response);
+
+    if (strcmp(response, "AUTHENTICATED") != 0)
+    {
+        printf("Error authenticating user\n");
+        printf("%s\n", response);
+
+        close(sock_fd);
+
+        return -1;
+    }
+
+    printf("Authenticated!\n");
 
     return 0;
 }

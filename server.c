@@ -16,29 +16,43 @@
 
 #define PORT 5000
 
+typedef struct Cred
+{
+    char username[50];
+    char password[50];
+} Cred;
+
 typedef struct Client
 {
     char *username;
     char *password;
     int sock_fd;
 
+    Cred *creds;
+    int no_of_users;
+
     struct Client *head;
     struct Client *next;
 } Client;
 
-Client *new_client(int sock_fd)
+Client *new_client(int sock_fd, Client *head, Cred *creds, int no_of_users)
 {
     Client *client = (Client *)malloc(sizeof(Client));
     client->username = NULL;
     client->password = NULL;
     client->sock_fd = sock_fd;
+
+    client->creds = creds;
+    client->no_of_users = no_of_users;
+
+    client->head = head;
     client->next = NULL;
     return client;
 }
 
 Client *initialize_list()
 {
-    Client *head = new_client(0);
+    Client *head = new_client(0, NULL, NULL, 0);
     return head;
 }
 
@@ -71,9 +85,47 @@ void *handle_client(void *arg)
 {
     Client *client = (Client *)arg;
 
-    printf("New client connected!\n");
-    char *message = "Hello world!\n";
-    send_packet(client->sock_fd, message, strlen(message));
+    printf("- New client connected!\n");
+
+    char *username, *password;
+    recv_packet(client->sock_fd, &username);
+    recv_packet(client->sock_fd, &password);
+
+    char *invalid_password = "Invalid Password!";
+    char *user_not_found = "User not found!";
+    char *authenticated = "AUTHENTICATED";
+
+    int flag = 0;
+    for (int i = 0; i < client->no_of_users; i++)
+    {
+        if (strcmp(client->creds[i].username, username) == 0)
+        {
+            if (strcmp(client->creds[i].password, password) != 0)
+            {
+                send_packet(client->sock_fd, invalid_password, strlen(invalid_password));
+
+                close(client->sock_fd);
+                remove_client(client->head, client);
+                return NULL;
+            }
+            else
+            {
+                flag = 1;
+                break;
+            }
+        }
+    }
+
+    if (flag == 0)
+    {
+        send_packet(client->sock_fd, user_not_found, strlen(user_not_found));
+        close(client->sock_fd);
+        remove_client(client->head, client);
+        return NULL;
+    }
+
+    send_packet(client->sock_fd, authenticated, strlen(authenticated));
+
     close(client->sock_fd);
 
     remove_client(client->head, client);
@@ -122,16 +174,19 @@ int main()
 
     char fusername[50], fpassword[50];
 
+    int no_of_users = 0;
+    while (fscanf(cred_file, "%[^,]%*c %[^\n]%*c", fusername, fpassword) != EOF)
+        no_of_users++;
+
+    Cred *creds = calloc(no_of_users, sizeof(Cred));
+
+    fseek(cred_file, 0, SEEK_SET);
+    int i = 0;
     while (fscanf(cred_file, "%[^,]%*c %[^\n]%*c", fusername, fpassword) != EOF)
     {
-        if (strcmp(fusername, username) == 0)
-        {
-            if (strcmp(fpassword, password) == 0)
-            {
-                printf("Authenticated!\n");
-                break;
-            }
-        }
+        strcpy(creds[i].username, fusername);
+        strcpy(creds[i].password, fpassword);
+        i++;
     }
 
     Client *head = initialize_list();
@@ -144,7 +199,9 @@ int main()
             continue;
         }
 
-        Client *client = new_client(conn_socket);
+        fflush(stdout);
+
+        Client *client = new_client(conn_socket, head, creds, no_of_users);
         add_client(head, client);
         pthread_t thread_id;
         pthread_create(&thread_id, NULL, handle_client, client);

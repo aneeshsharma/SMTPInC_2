@@ -4,7 +4,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-#define HEADER_SIZE 16
+#define HEADER_SIZE 8
 
 int send_packet(int sock_fd, char *data, int length)
 {
@@ -29,15 +29,11 @@ int recv_packet(int sock_fd, char **data)
 
     int length = -1;
 
-    printf("Header: %s\n", header);
-
     sscanf(header, "%d", &length);
-
-    printf("Length: %d\n", length);
 
     if (length <= 0)
     {
-        printf("Invalid length\n");
+        printf("COMM_ERROR : Invalid length or header format\n");
         return -1;
     }
 
