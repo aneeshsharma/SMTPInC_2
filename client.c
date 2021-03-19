@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 
 #include "packet.c"
+#include "fields.c"
 
 #define PORT 5000
 #define LINE_SIZE 81
@@ -105,6 +106,8 @@ int main()
 
         if (choice == 1)
         {
+            printf("Option selected: Send new email\n");
+            printf("To end the body, last line should be just a period (\".\")\n");
             char from[50], to[50], subject[50], body[MAX_BODY_SIZE];
             char buffer[LINE_SIZE] = {0};
             int count = 0;
@@ -115,6 +118,17 @@ int main()
             scanf("%s%*c", to);
             printf("Subject: ");
             scanf("%[^\n]%*c", subject);
+
+            if (!verify_email(to))
+            {
+                printf("Invalid recepient email!\nEmail should be of the format X@Y\n");
+                continue;
+            }
+            if (!verify_email(from))
+            {
+                printf("Invalid sender email!\nEmail should be of the format X@Y\n");
+                continue;
+            }
             printf("Message body:\n");
             while (strcmp(buffer, ".") != 0 && count < MAX_BODY_SIZE)
             {

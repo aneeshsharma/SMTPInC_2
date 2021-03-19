@@ -184,9 +184,21 @@ void *handle_client(void *arg)
         printf("> From: %s\n", from);
         printf("> To: %s\n", to);
 
+        if (!verify_email(from))
+        {
+            char *invalid_from = "Invalid sender email\n";
+            send_packet(client->sock_fd, invalid_from, strlen(invalid_from));
+        }
+
+        if (!verify_email(to))
+        {
+            char *invalid_to = "Invalid recepient email\n";
+            send_packet(client->sock_fd, invalid_to, strlen(invalid_to));
+        }
+
         if ((i = check_receipient(to, client->creds, client->no_of_users)) == -1)
         {
-            printf("! Reciepient %s not found\n", to);
+            printf("! Recepient %s not found\n", to);
             char *email_error = "Invalid Email";
             send_packet(client->sock_fd, email_error, strlen(email_error));
             continue;

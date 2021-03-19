@@ -70,3 +70,29 @@ void get_field(char *data, char *field, char *out)
         }
     }
 }
+
+int verify_email(char *email)
+{
+    int n = strlen(email);
+    int x = 0;
+    int y = 0;
+    int flag = 0;
+    for (int i = 0; i < n; i++)
+    {
+        if (email[i] == '@')
+        {
+            flag = 1;
+            continue;
+        }
+
+        if (flag == 0)
+            x++;
+        else
+            y++;
+
+        if (y >= 1)
+            break;
+    }
+
+    return x > 0 && y > 0;
+}
