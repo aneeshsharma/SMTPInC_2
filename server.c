@@ -187,13 +187,17 @@ void *handle_client(void *arg)
         if (!verify_email(from))
         {
             char *invalid_from = "Invalid sender email\n";
+            printf("! Invalid sender email\n");
             send_packet(client->sock_fd, invalid_from, strlen(invalid_from));
+            continue;
         }
 
         if (!verify_email(to))
         {
             char *invalid_to = "Invalid recepient email\n";
+            printf("! Invalid recepient email\n");
             send_packet(client->sock_fd, invalid_to, strlen(invalid_to));
+            continue;
         }
 
         if ((i = check_receipient(to, client->creds, client->no_of_users)) == -1)
