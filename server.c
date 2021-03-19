@@ -86,14 +86,29 @@ int check_receipient(char *email, Cred *creds, int no_of_users)
 {
     char username[50];
     int p = has_char(email, '@');
+    if (p == -1)
+        return -1;
     strncpy(username, email, p);
+    username[p] = 0;
+    printf("%s | %s\n", email, username);
     for (int i = 0; i < no_of_users; i++)
     {
+        printf("%s\n", creds[i].username);
         if (strcmp(creds[i].username, username) == 0)
             return i;
     }
 
-    return 0;
+    return -1;
+}
+
+void get_time_string(char *time_string)
+{
+    time_t current_time;
+    struct tm *tm_info;
+
+    current_time = time(NULL);
+    tm_info = gmtime(&current_time);
+    strftime(time_string, 100, "%a, %d %b %Y %I:%M:%S GMT", tm_info);
 }
 
 void *handle_client(void *arg)
@@ -148,6 +163,7 @@ void *handle_client(void *arg)
     while (1)
     {
         char *data;
+        char buffer[1024];
         int len = recv_packet(client->sock_fd, &data);
         int i = 0;
         if (strcmp(data, "EXIT") == 0)
@@ -158,15 +174,17 @@ void *handle_client(void *arg)
         printf("- Received new mail\n");
 
         char from[50], to[50], subject[50];
+        char body[1024];
 
         get_field(data, "From", from);
         get_field(data, "To", to);
         get_field(data, "Subject", subject);
+        get_field(data, "Body", body);
 
         printf("> From: %s\n", from);
         printf("> To: %s\n", to);
 
-        if (!(i = check_receipient(to, client->creds, client->no_of_users)))
+        if ((i = check_receipient(to, client->creds, client->no_of_users)) == -1)
         {
             printf("! Reciepient %s not found\n", to);
             char *email_error = "Invalid Email";
@@ -178,7 +196,14 @@ void *handle_client(void *arg)
         sprintf(mailbox_filename, "%s/mymailbox.mail", client->creds[i].username);
         FILE *mailbox = fopen(mailbox_filename, "a");
 
-        fprintf(mailbox, "%s", data);
+        char time_string[50];
+        get_time_string(time_string);
+
+        fprintf(mailbox, "From: %s\n", from);
+        fprintf(mailbox, "To: %s\n", to);
+        fprintf(mailbox, "Subject: %s\n", subject);
+        fprintf(mailbox, "Received: %s\n", time_string);
+        fprintf(mailbox, "%s", body);
 
         fclose(mailbox);
 

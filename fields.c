@@ -23,7 +23,7 @@ int has_char(char *str, char c)
     for (int i = 0; i < n; i++)
         if (str[i] == c)
             return i;
-    return 0;
+    return -1;
 }
 
 void get_line(char *data, int *index, char *out)
@@ -52,9 +52,13 @@ void get_field(char *data, char *field, char *out)
     while (index < size)
     {
         get_line(data, &index, buffer);
-        if (!has_char(buffer, ':'))
+        if (has_char(buffer, ':') == -1)
         {
             *out = 0;
+            if (strcmp(field, "Body") == 0)
+            {
+                sprintf(out, "%s\n%s", buffer, data + index);
+            }
             return;
         }
 
