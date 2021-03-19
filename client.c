@@ -8,13 +8,22 @@
 #include "packet.c"
 
 #define PORT 5000
+#define LINE_SIZE 81
+#define MAX_LINES 51
+#define MAX_BODY_SIZE LINE_SIZE *MAX_LINES + 1
+#define BUFFER_SIZE 1024
+
+void hr()
+{
+    for (int i = 0; i < 80; i++)
+        printf("-");
+    printf("\n");
+}
 
 int main()
 {
     int sock_fd = 0, recv_len;
     struct sockaddr_in server_address;
-    char message[256];
-    char buffer[1024] = {0};
     char username[50], password[50];
 
     if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -65,7 +74,81 @@ int main()
         return -1;
     }
 
-    printf("Authenticated!\n");
+    free(response);
 
+    printf("Authenticated!\n");
+    int choice = 0;
+
+    while (1)
+    {
+        hr();
+        printf("\nWelcome to SMTP client\n");
+        printf("1. Send Mail\n");
+        printf("2. Quit\n");
+        printf("Select one option [1 or 2]: ");
+        scanf("%d%*c", &choice);
+        printf("\n");
+
+        if (choice == 2)
+        {
+            printf("Bye\n");
+            response = "EXIT";
+            send_packet(sock_fd, response, strlen(response));
+            break;
+        }
+
+        if (choice < 1 || choice > 2)
+        {
+            printf("Invalid choice %d\nPlease try again\n", choice);
+            continue;
+        }
+
+        if (choice == 1)
+        {
+            char from[50], to[50], subject[50], body[MAX_BODY_SIZE];
+            char buffer[LINE_SIZE] = {0};
+            int count = 0;
+
+            printf("From: ");
+            scanf("%s%*c", from);
+            printf("To: ");
+            scanf("%s%*c", to);
+            printf("Subject: ");
+            scanf("%[^\n]%*c", subject);
+            printf("Message body:\n");
+            while (strcmp(buffer, ".") != 0 && count < MAX_BODY_SIZE)
+            {
+                scanf("%[^\n]%*c", buffer);
+                count += sprintf(body + count, "%s\n", buffer);
+            }
+
+            char data[BUFFER_SIZE];
+
+            count = 0;
+            count += sprintf(data + count, "From: %s\n", from);
+            count += sprintf(data + count, "To: %s\n", to);
+            count += sprintf(data + count, "Subject: %s\n", subject);
+            count += sprintf(data + count, "%s\n", body);
+
+            send_packet(sock_fd, data, count);
+
+            recv_packet(sock_fd, &response);
+
+            if (strcmp("EMAIL SENT", response) == 0)
+            {
+                printf("Email sent succesffully!\n");
+                continue;
+            }
+            else
+            {
+                printf("Error sending email!\n");
+                printf("Error: %s\n", response);
+            }
+
+            free(response);
+        }
+    }
+
+    close(sock_fd);
     return 0;
 }

@@ -40,5 +40,7 @@ int recv_packet(int sock_fd, char **data)
     char *buffer = calloc(length, sizeof(char));
     *data = buffer;
 
-    return recv(sock_fd, buffer, length, 0);
+    int recv_len = recv(sock_fd, buffer, length, 0);
+    buffer[recv_len] = '\0';
+    return recv_len + 1;
 }

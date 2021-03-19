@@ -13,6 +13,7 @@
 #include <pthread.h>
 
 #include "packet.c"
+#include "fields.c"
 
 #define PORT 5000
 
@@ -81,6 +82,20 @@ int remove_client(Client *head, Client *client)
     return 0;
 }
 
+int check_receipient(char *email, Cred *creds, int no_of_users)
+{
+    char username[50];
+    int p = has_char(email, '@');
+    strncpy(username, email, p);
+    for (int i = 0; i < no_of_users; i++)
+    {
+        if (strcmp(creds[i].username, username) == 0)
+            return i;
+    }
+
+    return 0;
+}
+
 void *handle_client(void *arg)
 {
     Client *client = (Client *)arg;
@@ -111,6 +126,8 @@ void *handle_client(void *arg)
             else
             {
                 flag = 1;
+                client->username = username;
+                client->password = password;
                 break;
             }
         }
@@ -125,6 +142,55 @@ void *handle_client(void *arg)
     }
 
     send_packet(client->sock_fd, authenticated, strlen(authenticated));
+
+    printf("- Client %s authenticated\n", client->username);
+
+    while (1)
+    {
+        char *data;
+        int len = recv_packet(client->sock_fd, &data);
+        int i = 0;
+        if (strcmp(data, "EXIT") == 0)
+        {
+            break;
+        }
+
+        printf("- Received new mail\n");
+
+        char from[50], to[50], subject[50];
+
+        get_field(data, "From", from);
+        get_field(data, "To", to);
+        get_field(data, "Subject", subject);
+
+        printf("> From: %s\n", from);
+        printf("> To: %s\n", to);
+
+        if (!(i = check_receipient(to, client->creds, client->no_of_users)))
+        {
+            printf("! Reciepient %s not found\n", to);
+            char *email_error = "Invalid Email";
+            send_packet(client->sock_fd, email_error, strlen(email_error));
+            continue;
+        }
+
+        char mailbox_filename[100];
+        sprintf(mailbox_filename, "%s/mymailbox.mail", client->creds[i].username);
+        FILE *mailbox = fopen(mailbox_filename, "a");
+
+        fprintf(mailbox, "%s", data);
+
+        fclose(mailbox);
+
+        char *success = "EMAIL SENT";
+        printf("- New mail sent to %s from %s by %s\n", to, from, client->username);
+
+        send_packet(client->sock_fd, success, strlen(success));
+
+        free(data);
+    }
+
+    printf("- Disconnecting client %s\n", client->username);
 
     close(client->sock_fd);
 
