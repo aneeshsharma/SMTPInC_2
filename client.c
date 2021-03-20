@@ -21,8 +21,43 @@ void hr()
     printf("\n");
 }
 
-int main()
+void show_usage()
 {
+    printf("Usage: ");
+    printf("./client.o PORT\n");
+    printf("PORT is the port number to use to connect to the SMTP server\n");
+}
+
+int main(int argc, char *argv[])
+{
+    int port = PORT;
+    char *address = "127.0.0.1";
+    if (argc == 2)
+    {
+        if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
+        {
+            show_usage();
+            return 0;
+        }
+        if (sscanf(argv[1], "%d", &port) != 1)
+        {
+            printf("Invalid PORT number\n");
+            show_usage();
+            return -1;
+        }
+    }
+    else if (argc == 1)
+    {
+        printf("PORT not specified\n");
+        printf("Using the default port as %d\n", port);
+    }
+    else
+    {
+        printf("Invalid arguments\n");
+        show_usage();
+        return -1;
+    }
+
     int sock_fd = 0, recv_len;
     struct sockaddr_in server_address;
     char username[50], password[50];
@@ -34,9 +69,9 @@ int main()
     }
 
     server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(PORT);
+    server_address.sin_port = htons(port);
 
-    if (inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr) <= 0)
+    if (inet_pton(AF_INET, address, &server_address.sin_addr) <= 0)
     {
         printf("Invalid address\\Address not supported\n");
         return -1;
@@ -50,11 +85,13 @@ int main()
         return -1;
     }
 
+    printf("Successfully connected to %s:%d\n", address, port);
+
     printf("Please enter username and password to continue...\n");
-    printf("Username -\t");
+    printf("Username: ");
     scanf("%s%*c", username);
 
-    printf("Password -\t");
+    printf("Password: ");
     scanf("%s%*c", password);
 
     int length;

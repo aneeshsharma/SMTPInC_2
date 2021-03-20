@@ -90,10 +90,8 @@ int check_receipient(char *email, Cred *creds, int no_of_users)
         return -1;
     strncpy(username, email, p);
     username[p] = 0;
-    printf("%s | %s\n", email, username);
     for (int i = 0; i < no_of_users; i++)
     {
-        printf("%s\n", creds[i].username);
         if (strcmp(creds[i].username, username) == 0)
             return i;
     }
@@ -118,8 +116,22 @@ void *handle_client(void *arg)
     printf("- New client connected!\n");
 
     char *username, *password;
-    recv_packet(client->sock_fd, &username);
-    recv_packet(client->sock_fd, &password);
+    if (recv_packet(client->sock_fd, &username) == -1)
+    {
+        printf("! received data was corrupted\n");
+        printf("- Closing connection\n");
+        close(client->sock_fd);
+        remove_client(client->head, client);
+        return NULL;
+    }
+    if (recv_packet(client->sock_fd, &password) == -1)
+    {
+        printf("! received data was corrupted\n");
+        printf("- Closing connection\n");
+        close(client->sock_fd);
+        remove_client(client->head, client);
+        return NULL;
+    }
 
     char *invalid_password = "Invalid Password!";
     char *user_not_found = "User not found!";
@@ -166,6 +178,11 @@ void *handle_client(void *arg)
         char buffer[1024];
         int len = recv_packet(client->sock_fd, &data);
         int i = 0;
+        if (len == -1)
+        {
+            printf("! received data was corrupted\n");
+            break;
+        }
         if (strcmp(data, "EXIT") == 0)
         {
             break;
@@ -238,14 +255,49 @@ void *handle_client(void *arg)
     remove_client(client->head, client);
 }
 
-int main()
+void show_usage()
 {
+    printf("Usage: ");
+    printf("./server.o PORT\n");
+    printf("PORT is the port number on which the SMTP server should start\n");
+}
+
+int main(int argc, char *argv[])
+{
+    int port = PORT;
+    if (argc == 2)
+    {
+        if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
+        {
+            show_usage();
+            return 0;
+        }
+        if (sscanf(argv[1], "%d", &port) != 1)
+        {
+            printf("Invalid PORT number\n");
+            show_usage();
+            return -1;
+        }
+    }
+    else if (argc == 1)
+    {
+        printf("PORT not specified\n");
+        printf("Using the default port as %d\n", port);
+    }
+    else
+    {
+        printf("Invalid arguments\n");
+        show_usage();
+        return -1;
+    }
     int server_fd, conn_socket, recv_len;
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
     char message[256];
     char buffer[1024] = {0};
+
+    printf("Starting SMTP server...\n");
 
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
@@ -261,7 +313,7 @@ int main()
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
+    address.sin_port = htons(port);
 
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
@@ -274,6 +326,9 @@ int main()
         printf("Error while listening for connections!\n");
         return -1;
     }
+
+    printf("Server started!\n");
+    printf("Listening on 0.0.0.0:%d\n", port);
 
     char username[50], password[50];
 
