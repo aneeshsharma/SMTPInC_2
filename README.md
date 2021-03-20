@@ -90,3 +90,27 @@ user2,password2
 userN,passwordN
 ```
 > Currently there is no way to add users other than editing this file directly
+
+## Mailbox Storage
+
+All the emails are stored inside the current working directory of the server application.
+
+For example, the mailbox of a user - `username` would be stored inside the file `username/mymailbox.mail`.
+
+The file contains all the emails separeted by period line (a line with just a `.`) with the following format.
+
+```
+From: sender@localhost
+To: username@localhost
+Subject: Email Subject
+Received: Fri, 19 Mar 2021 06:55:15 GMT
+Email Body
+.
+
+From: sender@localhost
+To: username@localhost
+Subject: Email Subject
+Received: Fri, 20 Mar 2021 06:55:15 GMT
+Email Body
+.
+```
