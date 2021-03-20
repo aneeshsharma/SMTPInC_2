@@ -57,6 +57,24 @@ Usage: ./client.o PORT
 PORT is the port number to use to connect to the SMTP server
 ```
 
+## Input Format
+
+When the Send Mail option is selected, the client application asks for the **From email**, **To email** and **the Subject line**.
+
+Right after the subject line, you can start typing the message body. You can enter multiple lines. **To end the body** give a line with just a single period (`.`) as input.
+
+An example of an email input would be
+```
+From: Andrew@localhost
+To: Stallings@localhost
+Subject: An important email
+Hey Stallings,
+I wanted to fix the date for the meeting.
+I would prefer any time on this Thursday.
+Please reply to this mail and let me know what you think.
+. 
+```
+
 ## Login Credentials File
 
 The credentials of the user accounts are stored inside the `logincred.txt` file in the current working directory of the server application.
