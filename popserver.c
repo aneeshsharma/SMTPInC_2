@@ -285,6 +285,7 @@ void *handle_client(void *arg)
                             count += sprintf(buffer + count, "%s", item);
                             found = 0;
                         }
+                        xcount = 0;
                     }
                 }
 

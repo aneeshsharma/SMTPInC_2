@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
                 send_packet(pop_fd, "GET_FILTER", strlen("GET_FILTER"));
                 send_packet(pop_fd, filter, strlen(filter));
                 recv_packet(pop_fd, &response);
-                printf("Received mails (%s):\n%s\n", filter, response);
+                printf("Received mails (%s):\n\n%s\n", filter, response);
             }
         }
     }
