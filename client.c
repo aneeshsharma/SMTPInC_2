@@ -227,6 +227,7 @@ int main(int argc, char *argv[])
             char *request = "GET_ALL";
             send_packet(pop_fd, request, strlen(request));
             int len = recv_packet(pop_fd, &response);
+            char filter[100];
 
             if (len == -1)
             {
@@ -234,9 +235,37 @@ int main(int argc, char *argv[])
                 break;
             }
 
-            printf("Mails recieved:\n%s\n");
+            printf("Mails recieved:\n%s\n", response);
 
             free(response);
+
+            int flag = 0;
+
+            printf("Filter (sender email): ");
+            scanf("%s%*c", filter);
+
+            if (verify_email(filter))
+            {
+                flag = 1;
+            }
+            if (!flag)
+            {
+                printf("INVALID MAIL_ID\n");
+                printf("Filter (sender email): ");
+                scanf("%s%*c", filter);
+                if (verify_email(filter))
+                {
+                    flag = 1;
+                }
+            }
+
+            if (flag)
+            {
+                send_packet(pop_fd, "GET_FILTER", strlen("GET_FILTER"));
+                send_packet(pop_fd, filter, strlen(filter));
+                recv_packet(pop_fd, &response);
+                printf("Received mails (%s):\n%s\n", filter, response);
+            }
         }
     }
 

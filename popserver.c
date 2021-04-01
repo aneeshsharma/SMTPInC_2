@@ -235,6 +235,69 @@ void *handle_client(void *arg)
 
             int len = send_packet(client->sock_fd, buffer, count);
         }
+        if (strcmp(data, "GET_FILTER") == 0)
+        {
+            char *mail;
+            int len = recv_packet(client->sock_fd, &mail);
+
+            char *response;
+
+            if (!verify_email(mail))
+            {
+                response = "INVALID EMAIL\n";
+                send_packet(client->sock_fd, "INVALID EMAIL\n", strlen(response));
+            }
+            else
+            {
+                char mailbox_filename[100];
+                sprintf(mailbox_filename, "%s/mymailbox.mail", client->username);
+                FILE *mailbox = fopen(mailbox_filename, "r");
+
+                char line[100];
+
+                char sender[100], subject[100], time[100];
+                char item[1024];
+
+                printf("- Getting mails for %s from file %s\n", client->username, mailbox_filename);
+
+                int attr = 0;
+                int count = 0, xcount = 0;
+                int flag = 0;
+                int found = 0;
+                while (mailbox && fscanf(mailbox, "%[^\n]%*c", line) != EOF)
+                {
+                    if (starts_with(line, "From"))
+                    {
+                        strcpy(sender, line + 6);
+                        if (strcmp(sender, mail) == 0)
+                        {
+                            found = 1;
+                        }
+                    }
+
+                    xcount += sprintf(item + xcount, "%s\n", line);
+
+                    if (strcmp(line, ".") == 0)
+                    {
+                        fseek(mailbox, 1, SEEK_CUR);
+                        if (found)
+                        {
+                            count += sprintf(buffer + count, "%s", item);
+                            found = 0;
+                        }
+                    }
+                }
+
+                if (count == 0)
+                {
+                    count = sprintf(buffer, "NO MAILS TO SHOW\n");
+                }
+
+                int len = send_packet(client->sock_fd, buffer, count);
+            }
+        }
+
+        free(data);
     }
 
     printf("- Disconnecting client %s\n", client->username);
