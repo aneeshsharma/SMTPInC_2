@@ -9,6 +9,7 @@
 #include "fields.c"
 
 #define PORT 5000
+#define POP_PORT 6000
 #define LINE_SIZE 81
 #define MAX_LINES 51
 #define MAX_BODY_SIZE LINE_SIZE *MAX_LINES + 1
@@ -31,6 +32,7 @@ void show_usage()
 int main(int argc, char *argv[])
 {
     int port = PORT;
+    int pop_port = POP_PORT;
     char *address = "127.0.0.1";
     if (argc == 2)
     {
@@ -58,8 +60,8 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    int sock_fd = 0, recv_len;
-    struct sockaddr_in server_address;
+    int sock_fd = 0, pop_fd = 0, recv_len;
+    struct sockaddr_in server_address, pop_address;
     char username[50], password[50];
 
     if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -68,8 +70,16 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    if ((pop_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        printf("Error creating socket!!\n");
+        return -1;
+    }
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(port);
+
+    pop_address.sin_family = AF_INET;
+    pop_address.sin_port = htons(pop_port);
 
     if (inet_pton(AF_INET, address, &server_address.sin_addr) <= 0)
     {
@@ -77,14 +87,24 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    if (inet_pton(AF_INET, address, &pop_address.sin_addr) <= 0)
+    {
+        printf("Invalid address\\Address not supported\n");
+        return -1;
+    }
     printf("Connecting...\n");
 
     if (connect(sock_fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
     {
-        printf("Connection failed!\n");
+        printf("SMTP Connection failed!\n");
         return -1;
     }
 
+    if (connect(pop_fd, (struct sockaddr *)&pop_address, sizeof(pop_address)) < 0)
+    {
+        printf("Pop Connection failed!\n");
+        return -1;
+    }
     printf("Successfully connected to %s:%d\n", address, port);
 
     printf("Please enter username and password to continue...\n");
@@ -100,7 +120,11 @@ int main(int argc, char *argv[])
     send_packet(sock_fd, username, strlen(username));
     send_packet(sock_fd, password, strlen(password));
 
+    send_packet(pop_fd, username, strlen(username));
+    send_packet(pop_fd, password, strlen(password));
+
     length = recv_packet(sock_fd, &response);
+    length = recv_packet(pop_fd, &response);
 
     if (strcmp(response, "AUTHENTICATED") != 0)
     {
@@ -122,20 +146,18 @@ int main(int argc, char *argv[])
         hr();
         printf("\nWelcome to SMTP client\n");
         printf("1. Send Mail\n");
-        printf("2. Quit\n");
-        printf("Select one option [1 or 2]: ");
+        printf("2. Manage Mail\n");
+        printf("3. Quit\n");
+        printf("Select one option [1-3]: ");
         scanf("%d%*c", &choice);
         printf("\n");
 
-        if (choice == 2)
+        if (choice == 3)
         {
-            printf("Bye\n");
-            response = "EXIT";
-            send_packet(sock_fd, response, strlen(response));
             break;
         }
 
-        if (choice < 1 || choice > 2)
+        if (choice < 1 || choice > 3)
         {
             printf("Invalid choice %d\nPlease try again\n", choice);
             continue;
@@ -198,8 +220,30 @@ int main(int argc, char *argv[])
 
             free(response);
         }
+
+        if (choice == 2)
+        {
+            printf("Manage mail options selected\n");
+            char *request = "GET_ALL";
+            send_packet(pop_fd, request, strlen(request));
+            int len = recv_packet(pop_fd, &response);
+
+            if (len == -1)
+            {
+                printf("Data corrupted exiting...\n");
+                break;
+            }
+
+            printf("Mails recieved:\n%s\n");
+
+            free(response);
+        }
     }
 
+    printf("Bye\n");
+    response = "EXIT";
+    send_packet(sock_fd, response, strlen(response));
+    send_packet(pop_fd, response, strlen(response));
     close(sock_fd);
     return 0;
 }
